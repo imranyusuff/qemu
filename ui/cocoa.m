@@ -102,6 +102,7 @@ static bool swap_opt_cmd;
 static int gArgc;
 static char **gArgv;
 static bool selective_drawing;
+static int zoom_smoothing_quality;
 static NSTextField *pauseLabel;
 
 static QemuSemaphore display_init_sem;
@@ -446,7 +447,7 @@ static CGEventRef handleTapEvent(CGEventTapProxy proxy, CGEventType type, CGEven
     // get CoreGraphic context
     CGContextRef viewContextRef = [[NSGraphicsContext currentContext] CGContext];
 
-    CGContextSetInterpolationQuality (viewContextRef, kCGInterpolationNone);
+    CGContextSetInterpolationQuality (viewContextRef, zoom_smoothing_quality);
     CGContextSetShouldAntialias (viewContextRef, NO);
 
     // draw screen bitmap directly to Core Graphics context
@@ -1151,6 +1152,7 @@ static CGEventRef handleTapEvent(CGEventTapProxy proxy, CGEventType type, CGEven
 - (void)showQEMUDoc:(id)sender;
 - (void)zoomToFit:(id) sender;
 - (void)toggleSelectiveDrawing:(id) sender;
+- (void)setZoomSmoothing:(id) sender;
 - (void)displayConsole:(id)sender;
 - (void)pauseQEMU:(id)sender;
 - (void)resumeQEMU:(id)sender;
@@ -1197,6 +1199,7 @@ static CGEventRef handleTapEvent(CGEventTapProxy proxy, CGEventType type, CGEven
         [normalWindow center];
         [normalWindow setDelegate: self];
         selective_drawing = true;
+        zoom_smoothing_quality = kCGInterpolationNone;
 
         /* Used for displaying pause on the screen */
         pauseLabel = [NSTextField new];
@@ -1390,6 +1393,30 @@ static CGEventRef handleTapEvent(CGEventTapProxy proxy, CGEventType type, CGEven
     } else {
         [sender setState: NSControlStateValueOff];
     }
+}
+
+/* Select zoom smoothing option */
+- (void)setZoomSmoothing:(id) sender
+{
+    NSMenu *menu;
+
+    menu = [sender menu];
+    if (menu != nil)
+    {
+        /* Unselect the currently selected item */
+        for (NSMenuItem *item in [menu itemArray]) {
+            if (item.state == NSControlStateValueOn) {
+                [item setState: NSControlStateValueOff];
+                break;
+            }
+        }
+    }
+
+    // check the menu item
+    [sender setState: NSControlStateValueOn];
+
+    // get the zoom smoothing mode
+    zoom_smoothing_quality = [sender tag];
 }
 
 /* Displays the console on the screen */
@@ -1614,7 +1641,9 @@ static void create_initial_menus(void)
 {
     // Add menus
     NSMenu      *menu;
+    NSMenu      *subMenu;
     NSMenuItem  *menuItem;
+    NSMenuItem  *subMenuItem;
 
     [NSApp setMainMenu:[[NSMenu alloc] init]];
     [NSApp setServicesMenu:[[NSMenu alloc] initWithTitle:@"Services"]];
@@ -1656,6 +1685,26 @@ static void create_initial_menus(void)
     [menu addItem: [[[NSMenuItem alloc] initWithTitle:@"Enter Fullscreen" action:@selector(doToggleFullScreen:) keyEquivalent:@"f"] autorelease]]; // Fullscreen
     [menu addItem: [[[NSMenuItem alloc] initWithTitle:@"Zoom To Fit" action:@selector(zoomToFit:) keyEquivalent:@""] autorelease]];
     [menu addItem: [[[NSMenuItem alloc] initWithTitle:@"Do Not Use Selective Drawing" action:@selector(toggleSelectiveDrawing:) keyEquivalent:@""] autorelease]];
+
+    // View->Smoothing submenu
+    subMenu = [[NSMenu alloc] initWithTitle:@"Zoom Smoothing"];
+    menuItem = [[[NSMenuItem alloc] initWithTitle:@"None" action:@selector(setZoomSmoothing:) keyEquivalent:@""] autorelease];
+    [menuItem setState: NSControlStateValueOn];
+    [menuItem setTag: kCGInterpolationNone];
+    [subMenu addItem: menuItem];
+    menuItem = [[[NSMenuItem alloc] initWithTitle:@"Low" action:@selector(setZoomSmoothing:) keyEquivalent:@""] autorelease];
+    [menuItem setTag: kCGInterpolationLow];
+    [subMenu addItem: menuItem];
+    menuItem = [[[NSMenuItem alloc] initWithTitle:@"Medium" action:@selector(setZoomSmoothing:) keyEquivalent:@""] autorelease];
+    [menuItem setTag: kCGInterpolationMedium];
+    [subMenu addItem: menuItem];
+    menuItem = [[[NSMenuItem alloc] initWithTitle:@"High" action:@selector(setZoomSmoothing:) keyEquivalent:@""] autorelease];
+    [menuItem setTag: kCGInterpolationHigh];
+    [subMenu addItem: menuItem];
+    subMenuItem = [[[NSMenuItem alloc] initWithTitle:@"Zoom Smoothing" action:nil keyEquivalent:@""] autorelease];
+    [subMenuItem setSubmenu:subMenu];
+    [menu addItem:subMenuItem];
+
     menuItem = [[[NSMenuItem alloc] initWithTitle:@"View" action:nil keyEquivalent:@""] autorelease];
     [menuItem setSubmenu:menu];
     [[NSApp mainMenu] addItem:menuItem];
