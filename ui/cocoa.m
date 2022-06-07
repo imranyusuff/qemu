@@ -101,6 +101,7 @@ static bool swap_opt_cmd;
 
 static int gArgc;
 static char **gArgv;
+static bool selective_drawing;
 static NSTextField *pauseLabel;
 
 static QemuSemaphore display_init_sem;
@@ -478,27 +479,32 @@ static CGEventRef handleTapEvent(CGEventTapProxy proxy, CGEventType type, CGEven
             0, //interpolate
             kCGRenderingIntentDefault //intent
         );
-        // selective drawing code (draws only dirty rectangles) (OS X >= 10.4)
-        const NSRect *rectList;
-        NSInteger rectCount;
-        int i;
-        CGImageRef clipImageRef;
-        CGRect clipRect;
-        CGFloat d = (CGFloat)h / [self frame].size.height;
+        if (selective_drawing) {
+          // selective drawing code (draws only dirty rectangles) (OS X >= 10.4)
+          const NSRect *rectList;
+          NSInteger rectCount;
+          int i;
+          CGImageRef clipImageRef;
+          CGRect clipRect;
+          CGFloat d = (CGFloat)h / [self frame].size.height;
 
-        [self getRectsBeingDrawn:&rectList count:&rectCount];
-        for (i = 0; i < rectCount; i++) {
-            clipRect.origin.x = rectList[i].origin.x * d;
-            clipRect.origin.y = (float)h - (rectList[i].origin.y + rectList[i].size.height) * d;
-            clipRect.size.width = rectList[i].size.width * d;
-            clipRect.size.height = rectList[i].size.height * d;
-            clipImageRef = CGImageCreateWithImageInRect(
-                                                        imageRef,
-                                                        clipRect
-                                                        );
-            CGContextDrawImage (viewContextRef, cgrect(rectList[i]), clipImageRef);
-            CGImageRelease (clipImageRef);
-        }
+          [self getRectsBeingDrawn:&rectList count:&rectCount];
+          for (i = 0; i < rectCount; i++) {
+              clipRect.origin.x = rectList[i].origin.x * d;
+              clipRect.origin.y = (float)h - (rectList[i].origin.y + rectList[i].size.height) * d;
+              clipRect.size.width = rectList[i].size.width * d;
+              clipRect.size.height = rectList[i].size.height * d;
+              clipImageRef = CGImageCreateWithImageInRect(
+                                                          imageRef,
+                                                          clipRect
+                                                          );
+              CGContextDrawImage (viewContextRef, cgrect(rectList[i]), clipImageRef);
+              CGImageRelease (clipImageRef);
+          }
+        } else {
+            CGRect allArea = CGRectMake(0, 0, w, h);
+            CGContextDrawImage (viewContextRef, allArea, imageRef);
+        };
         CGImageRelease (imageRef);
         CGDataProviderRelease(dataProviderRef);
     }
@@ -1144,6 +1150,7 @@ static CGEventRef handleTapEvent(CGEventTapProxy proxy, CGEventType type, CGEven
 - (void)doToggleFullScreen:(id)sender;
 - (void)showQEMUDoc:(id)sender;
 - (void)zoomToFit:(id) sender;
+- (void)toggleSelectiveDrawing:(id) sender;
 - (void)displayConsole:(id)sender;
 - (void)pauseQEMU:(id)sender;
 - (void)resumeQEMU:(id)sender;
@@ -1189,6 +1196,7 @@ static CGEventRef handleTapEvent(CGEventTapProxy proxy, CGEventType type, CGEven
         [normalWindow makeKeyAndOrderFront:self];
         [normalWindow center];
         [normalWindow setDelegate: self];
+        selective_drawing = true;
 
         /* Used for displaying pause on the screen */
         pauseLabel = [NSTextField new];
@@ -1369,6 +1377,17 @@ static CGEventRef handleTapEvent(CGEventTapProxy proxy, CGEventType type, CGEven
     } else {
         [normalWindow setStyleMask:[normalWindow styleMask] & ~NSWindowStyleMaskResizable];
         [cocoaView resizeWindow];
+        [sender setState: NSControlStateValueOff];
+    }
+}
+
+/* Select if selective drawing (updates only dirty regions) is to be used */
+- (void)toggleSelectiveDrawing:(id) sender
+{
+    selective_drawing = !selective_drawing;
+    if (selective_drawing == false) {
+        [sender setState: NSControlStateValueOn];
+    } else {
         [sender setState: NSControlStateValueOff];
     }
 }
@@ -1636,6 +1655,7 @@ static void create_initial_menus(void)
     menu = [[NSMenu alloc] initWithTitle:@"View"];
     [menu addItem: [[[NSMenuItem alloc] initWithTitle:@"Enter Fullscreen" action:@selector(doToggleFullScreen:) keyEquivalent:@"f"] autorelease]]; // Fullscreen
     [menu addItem: [[[NSMenuItem alloc] initWithTitle:@"Zoom To Fit" action:@selector(zoomToFit:) keyEquivalent:@""] autorelease]];
+    [menu addItem: [[[NSMenuItem alloc] initWithTitle:@"Do Not Use Selective Drawing" action:@selector(toggleSelectiveDrawing:) keyEquivalent:@""] autorelease]];
     menuItem = [[[NSMenuItem alloc] initWithTitle:@"View" action:nil keyEquivalent:@""] autorelease];
     [menuItem setSubmenu:menu];
     [[NSApp mainMenu] addItem:menuItem];
