@@ -102,6 +102,7 @@ static bool swap_opt_cmd;
 static int gArgc;
 static char **gArgv;
 static bool selective_drawing;
+static bool zoom_antialiasing;
 static int zoom_smoothing_quality;
 static NSTextField *pauseLabel;
 
@@ -448,7 +449,7 @@ static CGEventRef handleTapEvent(CGEventTapProxy proxy, CGEventType type, CGEven
     CGContextRef viewContextRef = [[NSGraphicsContext currentContext] CGContext];
 
     CGContextSetInterpolationQuality (viewContextRef, zoom_smoothing_quality);
-    CGContextSetShouldAntialias (viewContextRef, NO);
+    CGContextSetShouldAntialias (viewContextRef, zoom_antialiasing);
 
     // draw screen bitmap directly to Core Graphics context
     if (!pixman_image) {
@@ -1199,6 +1200,7 @@ static CGEventRef handleTapEvent(CGEventTapProxy proxy, CGEventType type, CGEven
         [normalWindow center];
         [normalWindow setDelegate: self];
         selective_drawing = true;
+        zoom_antialiasing = false;
         zoom_smoothing_quality = kCGInterpolationNone;
 
         /* Used for displaying pause on the screen */
@@ -1389,6 +1391,17 @@ static CGEventRef handleTapEvent(CGEventTapProxy proxy, CGEventType type, CGEven
 {
     selective_drawing = !selective_drawing;
     if (selective_drawing == false) {
+        [sender setState: NSControlStateValueOn];
+    } else {
+        [sender setState: NSControlStateValueOff];
+    }
+}
+
+/* Select zoom anti-aliasing on or off */
+- (void)setZoomAntiAliasing:(id) sender
+{
+    zoom_antialiasing = !zoom_antialiasing;
+    if (zoom_antialiasing == true) {
         [sender setState: NSControlStateValueOn];
     } else {
         [sender setState: NSControlStateValueOff];
@@ -1685,6 +1698,7 @@ static void create_initial_menus(void)
     [menu addItem: [[[NSMenuItem alloc] initWithTitle:@"Enter Fullscreen" action:@selector(doToggleFullScreen:) keyEquivalent:@"f"] autorelease]]; // Fullscreen
     [menu addItem: [[[NSMenuItem alloc] initWithTitle:@"Zoom To Fit" action:@selector(zoomToFit:) keyEquivalent:@""] autorelease]];
     [menu addItem: [[[NSMenuItem alloc] initWithTitle:@"Do Not Use Selective Drawing" action:@selector(toggleSelectiveDrawing:) keyEquivalent:@""] autorelease]];
+    [menu addItem: [[[NSMenuItem alloc] initWithTitle:@"Zoom Anti-Aliasing" action:@selector(setZoomAntiAliasing:) keyEquivalent:@""] autorelease]];
 
     // View->Smoothing submenu
     subMenu = [[NSMenu alloc] initWithTitle:@"Zoom Smoothing"];
