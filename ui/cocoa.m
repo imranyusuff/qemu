@@ -480,29 +480,29 @@ static CGEventRef handleTapEvent(CGEventTapProxy proxy, CGEventType type, CGEven
             kCGRenderingIntentDefault //intent
         );
         if (selective_drawing) {
-          // selective drawing code (draws only dirty rectangles) (OS X >= 10.4)
-          const NSRect *rectList;
-          NSInteger rectCount;
-          int i;
-          CGImageRef clipImageRef;
-          CGRect clipRect;
-          CGFloat d = (CGFloat)h / [self frame].size.height;
+            // selective drawing code (draws only dirty rectangles) (OS X >= 10.4)
+            const NSRect *rectList;
+            NSInteger rectCount;
+            int i;
+            CGImageRef clipImageRef;
+            CGRect clipRect;
+            CGFloat d = (CGFloat)h / [self frame].size.height;
 
-          [self getRectsBeingDrawn:&rectList count:&rectCount];
-          for (i = 0; i < rectCount; i++) {
-              clipRect.origin.x = rectList[i].origin.x * d;
-              clipRect.origin.y = (float)h - (rectList[i].origin.y + rectList[i].size.height) * d;
-              clipRect.size.width = rectList[i].size.width * d;
-              clipRect.size.height = rectList[i].size.height * d;
-              clipImageRef = CGImageCreateWithImageInRect(
-                                                          imageRef,
-                                                          clipRect
-                                                          );
-              CGContextDrawImage (viewContextRef, cgrect(rectList[i]), clipImageRef);
-              CGImageRelease (clipImageRef);
-          }
+            [self getRectsBeingDrawn:&rectList count:&rectCount];
+            for (i = 0; i < rectCount; i++) {
+                clipRect.origin.x = rectList[i].origin.x * d;
+                clipRect.origin.y = (float)h - (rectList[i].origin.y + rectList[i].size.height) * d;
+                clipRect.size.width = rectList[i].size.width * d;
+                clipRect.size.height = rectList[i].size.height * d;
+                clipImageRef = CGImageCreateWithImageInRect(
+                                                            imageRef,
+                                                            clipRect
+                                                            );
+                CGContextDrawImage (viewContextRef, cgrect(rectList[i]), clipImageRef);
+                CGImageRelease (clipImageRef);
+            }
         } else {
-            CGRect allArea = CGRectMake(0, 0, w, h);
+            CGRect allArea = CGRectMake(0, 0, [self frame].size.width, [self frame].size.height);
             CGContextDrawImage (viewContextRef, allArea, imageRef);
         };
         CGImageRelease (imageRef);
