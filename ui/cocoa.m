@@ -983,13 +983,13 @@ static CGEventRef handleTapEvent(CGEventTapProxy proxy, CGEventType type, CGEven
 
     with_iothread_lock(^{
         if (isAbsoluteEnabled) {
-            CGFloat d = (CGFloat)screen.height / [self frame].size.height;
+            CGFloat d = 1; //(CGFloat)screen.height / [self frame].size.height;
             NSPoint p = [event locationInWindow];
             // Note that the origin for Cocoa mouse coords is bottom left, not top left.
             qemu_input_queue_abs(dcl.con, INPUT_AXIS_X, p.x * d, 0, screen.width);
             qemu_input_queue_abs(dcl.con, INPUT_AXIS_Y, screen.height - p.y * d, 0, screen.height);
         } else {
-            CGFloat d = (CGFloat)screen.height / [self convertSizeToBacking:[self frame].size].height;
+            CGFloat d = 1; //(CGFloat)screen.height / [self convertSizeToBacking:[self frame].size].height;
             qemu_input_queue_rel(dcl.con, INPUT_AXIS_X, [event deltaX] * d);
             qemu_input_queue_rel(dcl.con, INPUT_AXIS_Y, [event deltaY] * d);
         }
